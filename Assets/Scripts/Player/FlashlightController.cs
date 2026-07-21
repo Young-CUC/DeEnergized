@@ -18,6 +18,13 @@ public class FlashlightController : MonoBehaviour
 
     private InputAction toggleAction;
 
+    [Header("Battery")]
+    public PlayerBattery battery;
+    public float kToggleCost = 2f;
+    public float kContinuousDrain = 0.25f;
+
+    private string kBatteryDrainId = "FlashLight";
+
     void Awake()
     {
         myStimulus = GetComponent<LightStimulus>();
@@ -27,13 +34,17 @@ public class FlashlightController : MonoBehaviour
         toggleAction = new InputAction("ToggleFlashlight", InputActionType.Button);
         toggleAction.AddBinding("<Keyboard>/f");
         toggleAction.AddBinding("<Mouse>/leftButton");
-        
+
+        battery = GetComponent<PlayerBattery>();
     }
 
     void OnEnable()
     {
         toggleAction.Enable();
         toggleAction.performed += OnTogglePerformed;
+
+        if (battery != null)
+            battery.OnLowPower += OnBatteryLowPower;
     }
 
     void OnDisable()
@@ -41,6 +52,8 @@ public class FlashlightController : MonoBehaviour
         toggleAction.Disable();
         toggleAction.performed -= OnTogglePerformed;
 
+        if (battery != null)
+            battery.OnLowPower -= OnBatteryLowPower;
     }
 
     void Start()
@@ -70,12 +83,61 @@ public class FlashlightController : MonoBehaviour
 
     private void ToggleLight()
     {
-        isLightOn = !isLightOn;
+        if (isLightOn)
+        {
+            // 关灯
+            isLightOn = false;
+            battery?.RemoveDrain(kBatteryDrainId);
+            if (myTrigger != null) myTrigger.enabled = false;
+            if (myLight != null) myLight.enabled = false;
+            HideAllNodes();
+        }
+        else
+        {
+            // 开灯：只消耗低电量阈值以上的部分，电量到阈值封底
+            if (battery != null)
+            {
+                float availableAboveThreshold = battery.CurrentCharge - battery.LowPowerThreshold;
+                if (availableAboveThreshold <= 0f)
+                    return; // 已在省电模式，禁止开灯
 
-        if (myTrigger != null) myTrigger.enabled = isLightOn;
-        if (myLight != null) myLight.enabled = isLightOn;
+                // 实际消耗 = min(开灯代价, 阈值以上可用电量)
+                float actualCost = Mathf.Min(kToggleCost, availableAboveThreshold);
+                battery.Consume(actualCost);
 
-        if (!isLightOn) HideAllNodes();
+                // Consume 可能触发了 OnLowPower → 省电模式强制关灯，不再继续
+                if (battery.IsLowPower)
+                    return;
+            }
+            else
+            {
+                // 无电池组件，退化行为
+                battery?.Consume(kToggleCost);
+            }
+
+            // 注册持续消耗 + 开灯
+            battery?.AddDrain(kBatteryDrainId, kContinuousDrain);
+            isLightOn = true;
+            if (myTrigger != null) myTrigger.enabled = true;
+            if (myLight != null) myLight.enabled = true;
+        }
+    }
+
+    private void OnBatteryLowPower()
+    {
+        if (!isLightOn) return;
+
+        isLightOn = false;
+        battery.RemoveDrain(kBatteryDrainId);
+        if (myTrigger != null) myTrigger.enabled = false;
+        if (myLight != null) myLight.enabled = false;
+        HideAllNodes();
+    }
+
+    void OnDestroy()
+    {
+        if (battery != null && isLightOn)
+            battery.RemoveDrain(kBatteryDrainId);
     }
 
     void UpdateBeamNodes()
@@ -114,6 +176,8 @@ public class FlashlightController : MonoBehaviour
     {
         foreach (var node in beamNodes) if (node != null) node.SetActive(false);
     }
+
+
 
 
 
