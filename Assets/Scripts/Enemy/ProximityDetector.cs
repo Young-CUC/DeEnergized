@@ -2,7 +2,7 @@ using UnityEngine;
 
 /// <summary>
 /// 接近察觉 —— 玩家进入一定范围后自动被敌人察觉，无需手电筒。
-/// 在 LightSensor 之前运行，通过 ReportDetection() 注入到现有状态机中。
+/// 在 EnemyPerception 之前运行，通过 ReportDetection() 注入到现有状态机中。
 /// </summary>
 [DefaultExecutionOrder(-50)]
 public class ProximityDetector : MonoBehaviour
@@ -23,14 +23,14 @@ public class ProximityDetector : MonoBehaviour
 
     [Header("References")]
     [Tooltip("状态机引用，留空则从同一 GameObject 自动获取。")]
-    [SerializeField] private LightSensor lightSensor;
+    [SerializeField] private EnemyPerception lightSensor;
 
     // ── 生命周期 ──────────────────────────────
 
     private void Awake()
     {
         if (lightSensor == null)
-            lightSensor = GetComponent<LightSensor>();
+            lightSensor = GetComponent<EnemyPerception>();
 
         if (playerTransform == null)
         {
@@ -47,7 +47,7 @@ public class ProximityDetector : MonoBehaviour
 
         if (IsPlayerInRange())
         {
-            lightSensor.ReportDetection(playerTransform.position);
+            lightSensor.ReportDetection(playerTransform.position, EnemyPerception.E_DetectionSource.Proximity);
         }
     }
 

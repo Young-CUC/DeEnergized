@@ -6,8 +6,8 @@ using UnityEditor;
 
 /// <summary>
 /// 敌人巡逻脚本 —— 使用本地坐标定义巡逻路线，无需在场景中放置空物体。
-/// 与 LightSensor 状态机集成：仅在 Patrol 状态下执行巡逻。
-/// 通过 DefaultExecutionOrder 确保在 LightSensor 之后运行。
+/// 与 EnemyBrain 状态机集成：仅在 Patrol 状态下执行巡逻。
+/// 通过 DefaultExecutionOrder 确保在 EnemyBrain 之后运行。
 /// </summary>
 [DefaultExecutionOrder(100)]
 [RequireComponent(typeof(NavMeshAgent))]
@@ -33,7 +33,7 @@ public class EnemyPatrol : MonoBehaviour
 
     [Header("引用")]
     [Tooltip("状态机引用，留空则从同一 GameObject 自动获取。")]
-    [SerializeField] private LightSensor lightSensor;
+    [SerializeField] private EnemyBrain brain;
 
     private NavMeshAgent agent;
     private Vector3[] worldWaypoints;
@@ -41,7 +41,7 @@ public class EnemyPatrol : MonoBehaviour
     private bool isReversing = false;
     private bool isWaiting = false;
     private float waitTimer = 0f;
-    private LightSensor.State previousState;
+    private EnemyBrain.E_State previousState;
     private bool hasStarted = false;
 
     //生命周期
@@ -49,16 +49,16 @@ public class EnemyPatrol : MonoBehaviour
     private void Awake()
     {
         agent = GetComponent<NavMeshAgent>();
-        if (lightSensor == null)
-            lightSensor = GetComponent<LightSensor>();
+        if (brain == null)
+            brain = GetComponent<EnemyBrain>();
 
         BuildWorldWaypoints();
     }
 
     private void Start()
     {
-        if (lightSensor != null)
-            previousState = lightSensor.currentState;
+        if (brain != null)
+            previousState = brain.currentState;
 
         if (worldWaypoints.Length > 0)
         {
@@ -71,20 +71,20 @@ public class EnemyPatrol : MonoBehaviour
 
     private void Update()
     {
-        if (lightSensor == null || worldWaypoints.Length == 0)
+        if (brain == null || worldWaypoints.Length == 0)
             return;
 
         // 检测是否刚刚进入 Patrol 状态
         bool justEnteredPatrol = hasStarted
-            && previousState != LightSensor.State.Patrol
-            && lightSensor.currentState == LightSensor.State.Patrol;
+            && previousState != EnemyBrain.E_State.Patrol
+            && brain.currentState == EnemyBrain.E_State.Patrol;
 
         // 非 Patrol 状态下不做任何事
-        if (lightSensor.currentState != LightSensor.State.Patrol)
+        if (brain.currentState != EnemyBrain.E_State.Patrol)
         {
             isWaiting = false;
             waitTimer = 0f;
-            previousState = lightSensor.currentState;
+            previousState = brain.currentState;
             return;
         }
 
@@ -96,7 +96,7 @@ public class EnemyPatrol : MonoBehaviour
 
         ExecutePatrol();
 
-        previousState = lightSensor.currentState;
+        previousState = brain.currentState;
     }
 
     //巡逻逻辑
