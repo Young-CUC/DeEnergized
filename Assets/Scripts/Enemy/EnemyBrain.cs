@@ -148,6 +148,29 @@ public class EnemyBrain : MonoBehaviour
             OnStateChanged?.Invoke(previousState, _currentState);
     }
 
+    // ── 强制察觉 API ──────────────────────
+
+    /// <summary>
+    /// 强制敌人进入警觉状态，锁定指定位置。
+    /// 供电弧闪光、配电盘强光等"瞬间事件"调用。
+    /// 绕过察觉度积累，直接将状态设为 Suspicious 并设置调查目标。
+    /// </summary>
+    public void ForceAlert(Vector3 targetPosition)
+    {
+        lastKnownPosition = targetPosition;
+        currentAwareness = 50f; // 从中点开始，给敌人调查的空间
+
+        E_State oldState = _currentState;
+        _currentState = E_State.Suspicious;
+
+        if (agent != null)
+            agent.isStopped = true;
+
+        OnAwarenessChanged?.Invoke(currentAwareness);
+        if (oldState != _currentState)
+            OnStateChanged?.Invoke(oldState, _currentState);
+    }
+
     // ── 编辑器可视化 ──────────────────────
 
 #if UNITY_EDITOR

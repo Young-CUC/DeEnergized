@@ -44,7 +44,10 @@ public class FlashlightController : MonoBehaviour
         toggleAction.performed += OnTogglePerformed;
 
         if (battery != null)
+        {
             battery.OnLowPower += OnBatteryLowPower;
+            battery.OnBatteryExtracted += OnBatteryExtracted;
+        }
     }
 
     void OnDisable()
@@ -53,7 +56,10 @@ public class FlashlightController : MonoBehaviour
         toggleAction.performed -= OnTogglePerformed;
 
         if (battery != null)
+        {
             battery.OnLowPower -= OnBatteryLowPower;
+            battery.OnBatteryExtracted -= OnBatteryExtracted;
+        }
     }
 
     void Start()
@@ -132,6 +138,20 @@ public class FlashlightController : MonoBehaviour
         if (myTrigger != null) myTrigger.enabled = false;
         if (myLight != null) myLight.enabled = false;
         HideAllNodes();
+    }
+
+    private void OnBatteryExtracted()
+    {
+        // 核心电池被配电盘取出：强制关灯并禁用开关
+        if (isLightOn)
+        {
+            isLightOn = false;
+            battery.RemoveDrain(kBatteryDrainId);
+            if (myTrigger != null) myTrigger.enabled = false;
+            if (myLight != null) myLight.enabled = false;
+            HideAllNodes();
+        }
+        toggleAction.Disable();
     }
 
     void OnDestroy()

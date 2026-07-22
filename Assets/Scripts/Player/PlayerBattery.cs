@@ -23,6 +23,8 @@ public class PlayerBattery : MonoBehaviour
     public event Action<float, float> OnChargeChanged;
     public event Action OnLowPower;
     public event Action OnChargeRestored;
+    /// <summary>核心电池被取出时触发（配电盘交互）。</summary>
+    public event System.Action OnBatteryExtracted;
 
     // 状态追踪
     private bool wasLowPower;
@@ -34,6 +36,8 @@ public class PlayerBattery : MonoBehaviour
     public float ChargePercent => maxCharge > 0f ? currentCharge / maxCharge : 0f;
     public bool IsLowPower => currentCharge <= lowPowerThreshold;
     public float LowPowerThreshold => lowPowerThreshold;
+    /// <summary>核心电池是否已被取出（配电盘交互后）。取出后所有耗电/充电行为失效。</summary>
+    public bool IsExtracted { get; private set; }
 
     // ── 生命周期 ────────────────────────────────
 
@@ -89,6 +93,7 @@ public class PlayerBattery : MonoBehaviour
     /// </summary>
     public void AddDrain(string sourceId, float ratePerSecond)
     {
+        if (IsExtracted) return;
         if (string.IsNullOrEmpty(sourceId))
         {
             Debug.LogWarning("PlayerBattery.AddDrain: sourceId 不能为空。");
@@ -119,6 +124,7 @@ public class PlayerBattery : MonoBehaviour
     /// </summary>
     public bool Consume(float amount)
     {
+        if (IsExtracted) return false;
         if (amount <= 0f)
             return true;
 
@@ -144,5 +150,26 @@ public class PlayerBattery : MonoBehaviour
     public bool CanAfford(float amount)
     {
         return currentCharge >= amount;
+    }
+
+    /// <summary>
+    /// 取出核心蓄电池（配电盘交互）。
+    /// 电量归零，清除所有耗电源，禁止后续耗电。
+    /// 触发 OnBatteryExtracted → FlashlightController 强制关灯。
+    /// </summary>
+    public void Extract()
+    {
+        if (IsExtracted) return;
+        IsExtracted = true;
+
+        // 清除所有持续耗电源
+        var ids = new System.Collections.Generic.List<string>(drainSources.Keys);
+        foreach (string id in ids)
+            RemoveDrain(id);
+
+        // 电量归零
+        currentCharge = 0f;
+        OnChargeChanged?.Invoke(currentCharge, maxCharge);
+        OnBatteryExtracted?.Invoke();
     }
 }

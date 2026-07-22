@@ -20,8 +20,10 @@ public class EnemyPerception : MonoBehaviour
     /// <summary>察觉来源类型 —— 扩展新来源时在此枚举中新增。</summary>
     public enum E_DetectionSource
     {
-        Light,       // 手电筒光线
-        Proximity    // 近距离察觉
+        Light,        // 手电筒光线 (优先级 1)
+        Proximity,    // 近距离察觉
+        DecoyLight,   // 诱导灯光线 (优先级 2)
+        ArcFlash      // 电弧强光 (优先级 3，瞬间锁定)
     }
 
     [System.Serializable]
@@ -48,6 +50,8 @@ public class EnemyPerception : MonoBehaviour
     {
         new DetectionRate { source = E_DetectionSource.Light, rate = 200f },
         new DetectionRate { source = E_DetectionSource.Proximity, rate = 50f },
+        new DetectionRate { source = E_DetectionSource.DecoyLight, rate = 300f },
+        new DetectionRate { source = E_DetectionSource.ArcFlash, rate = 100000f },
     };
 
     // ── 本帧感知结果（由 EnemyBrain 读取）──
@@ -60,6 +64,7 @@ public class EnemyPerception : MonoBehaviour
 
     private bool triggerHit;
     private Vector3 triggerHitPos;
+    private E_DetectionSource triggerHitSource;
     private bool externalReport;
     private Vector3 externalReportPos;
     private E_DetectionSource externalReportSource;
@@ -80,6 +85,17 @@ public class EnemyPerception : MonoBehaviour
         return rateLookup.TryGetValue(source, out float r) ? r : 200f;
     }
 
+    /// <summary>将 LightStimulus.StimulusType 映射到 E_DetectionSource。</summary>
+    private static E_DetectionSource StimulusToSource(LightStimulus.StimulusType type)
+    {
+        switch (type)
+        {
+            case LightStimulus.StimulusType.Decoy:     return E_DetectionSource.DecoyLight;
+            case LightStimulus.StimulusType.ArcFlash:  return E_DetectionSource.ArcFlash;
+            default:                                   return E_DetectionSource.Light;
+        }
+    }
+
     // ── Unity 触发器回调 ──────────────────
 
     private void OnTriggerStay(Collider other)
@@ -91,6 +107,7 @@ public class EnemyPerception : MonoBehaviour
             {
                 triggerHit = true;
                 triggerHitPos = stim.sourcePosition;
+                triggerHitSource = StimulusToSource(stim.type);
             }
         }
     }
@@ -127,7 +144,7 @@ public class EnemyPerception : MonoBehaviour
         {
             IsDetectedThisFrame = true;
             DetectedPosition = triggerHitPos;
-            DetectedSource = E_DetectionSource.Light;
+            DetectedSource = triggerHitSource;
         }
         else
         {
@@ -152,15 +169,24 @@ public class EnemyPerception : MonoBehaviour
         {
             if (c.TryGetComponent<LightSpotMarker>(out _))
             {
-                Vector3 dir = (c.transform.position - eyeTransform.position).normalized;
-                if (Vector3.Angle(eyeTransform.forward, dir) < fovAngle / 2f)
+                var stim = c.GetComponent<LightStimulus>();
+                bool isDecoy = stim != null && stim.type == LightStimulus.StimulusType.Decoy;
+                bool isArcFlash = stim != null && stim.type == LightStimulus.StimulusType.ArcFlash;
+
+                // Decoy/ArcFlash 全向可见（跳过 FOV 检查）；手电筒光束仍需在视野锥内
+                bool inFOV = isDecoy || isArcFlash || Vector3.Angle(
+                    eyeTransform.forward,
+                    (c.transform.position - eyeTransform.position).normalized) < fovAngle / 2f;
+
+                // ArcFlash 无视障碍（闪光会照亮整个环境）；其余类型需视线无遮挡
+                bool hasSight = isArcFlash || CheckLineOfSight(eyeTransform.position, c.transform.position);
+
+                if (inFOV && hasSight)
                 {
-                    if (CheckLineOfSight(eyeTransform.position, c.transform.position))
-                    {
-                        triggerHit = true;
-                        triggerHitPos = c.GetComponent<LightStimulus>().sourcePosition;
-                        return; // 第一个可见的光点即触发
-                    }
+                    triggerHit = true;
+                    triggerHitPos = stim.sourcePosition;
+                    triggerHitSource = StimulusToSource(stim.type);
+                    return;
                 }
             }
         }
