@@ -60,26 +60,4 @@ public abstract class DoorBase : MonoBehaviour
         if (doorCollider != null)
             doorCollider.enabled = !open;
     }
-
-    // ── 编辑器可视化 ──────────────────────
-
-#if UNITY_EDITOR
-    protected virtual void OnDrawGizmosSelected()
-    {
-        // Awake 可能尚未执行，回退计算
-        Vector3 cp = doorMesh != null
-            ? doorMesh.localPosition
-            : (Application.isPlaying ? closedPos : transform.localPosition);
-        Vector3 op = cp + openOffset;
-
-        Vector3 wc = transform.TransformPoint(isOpen ? op : cp);
-        Vector3 wo = transform.TransformPoint(isOpen ? cp : op);
-
-        Gizmos.color = Color.cyan;
-        Gizmos.DrawWireCube(wc, doorMesh != null ? doorMesh.localScale : Vector3.one);
-        Gizmos.color = Color.green;
-        Gizmos.DrawWireCube(wo, doorMesh != null ? doorMesh.localScale : Vector3.one);
-        Gizmos.DrawLine(wc, wo);
-    }
-#endif
 }

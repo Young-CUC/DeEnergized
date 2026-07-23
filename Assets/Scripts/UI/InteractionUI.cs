@@ -43,10 +43,26 @@ public class InteractionUI : MonoBehaviour
         var target = interactor.CurrentTarget;
         if (target != null)
         {
+            // ── UI 文字优先级（高 → 低）──
+            // P1: 需要光照但未被照射 → "Need Light"（红）
+            // P2: 不可交互（缺电池等） → 道具自身提示（红）
+            // P3: 可交互 → 道具自身提示（白）
+
+            // P1: LightRequired 未满足
+            var lr = interactor.CurrentLightRequired;
+            if (lr != null && !lr.IsLit)
+            {
+                promptText.text = InteractionTexts.NeedLight;
+                promptText.color = InteractionTexts.WarnColor;
+                promptText.enabled = true;
+                return;
+            }
+
+            // P2 / P3: 道具自身提示 + 颜色区分可交互/不可交互
             promptText.text = target.GetPrompt();
             promptText.color = target.CanInteract(inventory)
-                ? InteractionTexts.DefaultColor
-                : InteractionTexts.WarnColor;
+                ? InteractionTexts.DefaultColor   // P3: 白
+                : InteractionTexts.WarnColor;     // P2: 红
             promptText.enabled = true;
         }
         else

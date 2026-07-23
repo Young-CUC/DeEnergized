@@ -111,7 +111,7 @@ public class EscapeTimerUI : MonoBehaviour
     {
         if (timerText == null) return;
 
-        timerText.text = $"{InteractionTexts.EscapeTimerPrefix}{remaining.ToString(timeFormat)}";
+        timerText.text = $"{InteractionTexts.EscapeTimerPrefix}{remaining.ToString(timeFormat)}s";
         timerText.color = remaining <= warningThreshold ? warningColor : normalColor;
     }
 }

@@ -18,6 +18,9 @@ public static class InteractionTexts
     public const string SlotRemove = "Press 'E' to remove Spare Battery";
     public const string SlotNeedBattery = "Spare Battery required";
 
+    // ── Light Required ────────────────────
+    public const string NeedLight = "Need Light";
+
     // ── Player Inventory ──────────────────
     public const string HasBattery = "Spare Battery";
     public const string NoBattery = "";

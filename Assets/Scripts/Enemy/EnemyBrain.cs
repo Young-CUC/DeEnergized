@@ -28,6 +28,12 @@ public class EnemyBrain : MonoBehaviour
     [Tooltip("NavMeshAgent。留空则从同一 GameObject 自动获取。")]
     [SerializeField] private NavMeshAgent agent;
 
+    [Header("Movement Speed")]
+    [Tooltip("巡逻状态下的移动速度。")]
+    [SerializeField] private float patrolSpeed = 3.5f;
+    [Tooltip("追击/调查状态下的移动速度。")]
+    [SerializeField] private float investigateSpeed = 7f;
+
     [Header("Awareness")]
     [Tooltip("当前察觉度 (0-100)。")]
     public float currentAwareness = 0f;
@@ -53,6 +59,8 @@ public class EnemyBrain : MonoBehaviour
     {
         if (perception == null) perception = GetComponent<EnemyPerception>();
         if (agent == null) agent = GetComponent<NavMeshAgent>();
+
+        ApplySpeed(E_State.Patrol);
     }
 
     private void Update()
@@ -110,12 +118,20 @@ public class EnemyBrain : MonoBehaviour
                 if (currentAwareness >= 100f)
                 {
                     _currentState = E_State.Investigate;
-                    if (agent != null) agent.isStopped = false;
+                    if (agent != null)
+                    {
+                        agent.isStopped = false;
+                        ApplySpeed(E_State.Investigate);
+                    }
                 }
                 else if (currentAwareness <= 0f)
                 {
                     _currentState = E_State.Patrol;
-                    if (agent != null) agent.isStopped = false;
+                    if (agent != null)
+                    {
+                        agent.isStopped = false;
+                        ApplySpeed(E_State.Patrol);
+                    }
                 }
                 break;
 
@@ -130,7 +146,10 @@ public class EnemyBrain : MonoBehaviour
                     {
                         agent.isStopped = true;
                         if (currentAwareness < 100f)
+                        {
                             _currentState = E_State.Suspicious;
+                            ApplySpeed(E_State.Patrol);
+                        }
                     }
                     else
                     {
@@ -146,6 +165,14 @@ public class EnemyBrain : MonoBehaviour
 
         if (previousState != _currentState)
             OnStateChanged?.Invoke(previousState, _currentState);
+    }
+
+    // ── 速度控制 ──────────────────────────
+
+    private void ApplySpeed(E_State state)
+    {
+        if (agent == null) return;
+        agent.speed = state == E_State.Investigate ? investigateSpeed : patrolSpeed;
     }
 
     // ── 强制察觉 API ──────────────────────

@@ -11,6 +11,9 @@ public class FlashlightController : MonoBehaviour
     public float maxDistance = 20f;
     public float nodeInterval = 2f;
 
+    /// <summary>手电筒锥体的半角（度数），供 LightRequired 等外部脚本查询。</summary>
+    public float SpotHalfAngle => myLight != null ? myLight.spotAngle * 0.5f : 45f;
+
     private LightStimulus myStimulus;
     private Collider myTrigger;
     private Light myLight;

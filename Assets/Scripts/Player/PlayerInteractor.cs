@@ -23,8 +23,29 @@ public class PlayerInteractor : MonoBehaviour
 
     // ── 公开属性 ──────────────────────────
 
-    /// <summary>当前可交互的目标（供 UI 脚本读取提示文字）。</summary>
-    public IInteractable CurrentTarget => currentTarget;
+    /// <summary>当前可交互的目标（供 UI 脚本读取提示文字）。
+    /// 自动检测已销毁的 Unity 对象并清理引用。</summary>
+    public IInteractable CurrentTarget
+    {
+        get
+        {
+            // Unity 对象被 Destroy 后 C# 引用仍非 null，需用 UnityEngine.Object 的 == 检测
+            if (currentTarget is Object obj && obj == null)
+                currentTarget = null;
+            return currentTarget;
+        }
+    }
+
+    /// <summary>当前目标上的 LightRequired 组件（可能为 null）。</summary>
+    public LightRequired CurrentLightRequired
+    {
+        get
+        {
+            var target = CurrentTarget; // 通过属性访问，利用销毁检测
+            if (target == null) return null;
+            return (target as MonoBehaviour)?.GetComponent<LightRequired>();
+        }
+    }
 
     // ── 生命周期 ──────────────────────────
 
@@ -57,7 +78,13 @@ public class PlayerInteractor : MonoBehaviour
 
     private void OnInteractPerformed(InputAction.CallbackContext ctx)
     {
-        if (currentTarget != null && currentTarget.CanInteract(inventory))
+        if (currentTarget == null) return;
+
+        // 光源依赖检查：未被照射时阻止交互
+        var lr = CurrentLightRequired;
+        if (lr != null && !lr.IsLit) return;
+
+        if (currentTarget.CanInteract(inventory))
             currentTarget.OnInteract(inventory);
     }
 
