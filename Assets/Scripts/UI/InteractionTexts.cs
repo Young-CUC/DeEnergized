@@ -26,4 +26,8 @@ public static class InteractionTexts
     public const string PanelReady = "Press 'E' to insert Core Battery";
     public const string PanelNoBattery = "Core Battery required";
     public const string PanelUsed = "Panel activated";
+
+    // ── Escape Timer ──────────────────────
+    public const string EscapeTimerPrefix = "Escape in: ";
+    public const string EscapeTimerFinished = "Door closed";
 }
